@@ -6,18 +6,20 @@
 # -- Generate word vectors and sentence vector representation of text.
 # -- Generate mini batches for neural network learning process
 
-import sys
+
 import argparse
 import sent2vec
+import re
+import os
+import sys
+
 
 class Common:
-
-
-    def hello(self):
-        print("Hello folks!")
-
-
     def load_word_vec_model(self):
+        if self.config.word_vector_model == None:
+            print("No word vector model provided! Aborting ...")
+            exit()
+
         print("Loading word vector model ...")
         self.model = sent2vec.Sent2vecModel()
         self.model.load_model(self.config.word_vector_model)
@@ -45,6 +47,7 @@ class Common:
                                 nargs='?',
                                 help='Word vector model to be used to convert word and sentences.')
         arg_parser.add_argument('--process-n-examples',
+                                type=int,
                                 metavar='process_n_examples',
                                 nargs='?',
                                 help='Number of examples of the dataset directory to use.')
@@ -58,5 +61,25 @@ class Common:
                                 metavar='nn_batch_size',
                                 nargs='?',
                                 help='Batch size for each learning iteration.')
-
         self.config = arg_parser.parse_args()
+
+
+    # Return a list of files to be processed
+    def get_dataset_files(self):
+        files = os.listdir(self.config.dataset_dir)
+        files.sort()
+
+        if self.config.process_n_examples != None:
+            files = files[:self.config.process_n_examples]
+        return files
+
+
+    # Return a list of each sentence in text
+    def text_to_sentences(self, text):
+        text = text.replace("\xa0", " ")
+        sentences = re.split(r'[\.\,\n]', text)
+
+        exclusion = ['', '@highlight']
+        # Delete empty entries
+        sentences = [sentence for sentence in sentences if sentence not in exclusion]
+        return sentences
