@@ -12,7 +12,8 @@ import sent2vec
 import re
 import os
 import sys
-
+import time
+import nltk
 
 class Common:
     def load_word_vec_model(self):
@@ -32,36 +33,41 @@ class Common:
         #  General parameters
         arg_parser.add_argument('--session-name',
                                 metavar='session_name',
-                                nargs='?',
                                 help='Identifier for a specific run.')
         arg_parser.add_argument('--dataset-dir',
                                 metavar='dataset_dir',
-                                nargs='?',
                                 help='Dataset directory to use.')
         arg_parser.add_argument('--working-dir',
                                 metavar='working_dir',
-                                nargs='?',
                                 help='Working directory to save results.')
         arg_parser.add_argument('--word-vector-model',
                                 metavar='word_vector_model',
-                                nargs='?',
                                 help='Word vector model to be used to convert word and sentences.')
         arg_parser.add_argument('--process-n-examples',
                                 type=int,
                                 metavar='process_n_examples',
-                                nargs='?',
                                 help='Number of examples of the dataset directory to use.')
 
         # Neural Network parameters
         arg_parser.add_argument('--learning-rate',
                                 metavar='nn_learning_rate',
-                                nargs='?',
                                 help='Learning rate for NN training')
         arg_parser.add_argument('--batch-size',
                                 metavar='nn_batch_size',
-                                nargs='?',
                                 help='Batch size for each learning iteration.')
         self.config = arg_parser.parse_args()
+
+
+    # Log INFO and ERROR messages to respective files
+    def log_message(self, type, message):
+        if type == 'ERROR':
+            log_file = self.config.session_name + "-error.log"
+        elif type == 'INFO':
+            log_file = self.config.session_name + ".log"
+
+        f = open(self.config.working_dir + "/" + log_file, "a")
+        f.write(time.strftime("%Y-%m-%d %H:%m:%S", time.localtime()) + " -- " + message + "\n")
+        f.close()
 
 
     # Return a list of files to be processed
@@ -76,10 +82,23 @@ class Common:
 
     # Return a list of each sentence in text
     def text_to_sentences(self, text):
-        text = text.replace("\xa0", " ")
-        sentences = re.split(r'[\.\,\n]', text)
+        text = text.replace("\n", " ")
+        text = text.replace('@highlight', ".")
+        sentences = nltk.sent_tokenize(text)
+        sentences = [sentence.replace("  ", " ") for sentence in sentences]
 
-        exclusion = ['', '@highlight']
-        # Delete empty entries
-        sentences = [sentence for sentence in sentences if sentence not in exclusion]
-        return sentences
+
+
+        sentences = [sentence.lower() for sentence in sentences]
+        if len(sentences) > 2:
+            return sentences[0], sentences[1:]
+        else:
+            return [], []
+
+
+    def rouge_to_list(self, rouge_str):
+        rouge_list = [ [rouge_str[0]['rouge-1']['f'], rouge_str[0]['rouge-1']['p'], rouge_str[0]['rouge-1']['r'] ],\
+                         [rouge_str[0]['rouge-2']['f'], rouge_str[0]['rouge-2']['p'], rouge_str[0]['rouge-2']['r'] ],\
+                         [rouge_str[0]['rouge-l']['f'], rouge_str[0]['rouge-l']['p'], rouge_str[0]['rouge-l']['r'] ]\
+                       ]
+        return rouge_list
