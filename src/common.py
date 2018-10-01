@@ -37,6 +37,9 @@ class Common:
         arg_parser.add_argument('--dataset-dir',
                                 metavar='dataset_dir',
                                 help='Dataset directory to use.')
+        arg_parser.add_argument('--dataset-file-list',
+                                metavar='dataset_file_list',
+                                help='Load only files specified in informed file.')
         arg_parser.add_argument('--working-dir',
                                 metavar='working_dir',
                                 help='Working directory to save results.')
@@ -75,6 +78,17 @@ class Common:
         files = os.listdir(self.config.dataset_dir)
         files.sort()
 
+        if self.config.dataset_file_list != None:
+            files = []
+            f = open(self.config.dataset_file_list, "r")
+            print(f)
+
+            for file in f:
+                files.append(file[:len(file)-1])
+
+            print(str(files))
+            return files
+
         if self.config.process_n_examples != None:
             files = files[:self.config.process_n_examples]
         return files
@@ -86,8 +100,6 @@ class Common:
         text = text.replace('@highlight', ".")
         sentences = nltk.sent_tokenize(text)
         sentences = [sentence.replace("  ", " ") for sentence in sentences]
-
-
 
         sentences = [sentence.lower() for sentence in sentences]
         if len(sentences) > 2:

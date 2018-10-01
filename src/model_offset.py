@@ -20,9 +20,12 @@ texts_list_stat = []
 common.log_message("INFO", "\n\nStarting session " + str(common.config.session_name))
 common.log_message("INFO", "Parameters: " + str(common.config))
 common.log_message("INFO", "\n")
+files_counter = 0
+files_list = common.get_dataset_files()
 
-for file in common.get_dataset_files():
-    print("\n\nProcessing file " + file)
+for file in files_list:
+    print("\n\n[" + str("%.03f" % (files_counter /len(files_list))) + "] Processing file " + file)
+    files_counter += 1
     text = open(common.config.dataset_dir + "/" + file).read()
 
     # Get ground-truth summary and sentences
@@ -65,12 +68,15 @@ for file in common.get_dataset_files():
                                 common.rouge_to_list(rouge_str)])
         sentence_idx += 1
 
-        sentences_dist.sort(key=lambda x: (x[3], x[2]))
+    sentences_dist.sort(key=lambda x: (x[3], x[2]))
     common.log_message("INFO", str(sentences_dist[0]))
     texts_list_stat.append(sentences_dist[0])
 
-    sentences_dist = []
+    if sentences_dist[0][4][0][0] == 0.0:
+        common.log_message("INFO", "File " + file + " with rouge zero score. SENTENCES = " + \
+                    str(sentences) + " SUMMARY = " + str(summary))
 
+#
 rouge_1_list = []
 rouge_2_list = []
 rouge_l_list = []
