@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import nltk
+import numpy as np
 
 class Common:
     def load_word_vec_model(self):
@@ -40,6 +41,9 @@ class Common:
         arg_parser.add_argument('--dataset-file-list',
                                 metavar='dataset_file_list',
                                 help='Load only files specified in informed file.')
+        arg_parser.add_argument('--dataset-exclusion-list',
+                                metavar='dataset_exclusion_list',
+                                help='Files in dataset that must not be processed.')
         arg_parser.add_argument('--working-dir',
                                 metavar='working_dir',
                                 help='Working directory to save results.')
@@ -81,16 +85,27 @@ class Common:
         if self.config.dataset_file_list != None:
             files = []
             f = open(self.config.dataset_file_list, "r")
-            print(f)
 
             for file in f:
                 files.append(file[:len(file)-1])
 
-            print(str(files))
             return files
+
+        if self.config.dataset_exclusion_list != None:
+            exclusion_list = []
+
+            f = open(self.config.dataset_exclusion_list, "r")
+
+            for file in f:
+                exclusion_list.append(file[:len(file)-1])
+
+            files = [file for file in files if file not in exclusion_list]
+            print("Length files", len(files))
+
 
         if self.config.process_n_examples != None:
             files = files[:self.config.process_n_examples]
+
         return files
 
 
@@ -108,9 +123,46 @@ class Common:
             return [], []
 
 
+
+    # Return a list of each sentence in text and summaries
+    def text_to_sentences2(self, text):
+        text = text.replace("  ", " ")
+        sentences = text.split("\n")
+
+        sentences = [sentence.strip() for sentence in sentences]
+        sentences = [sentence for sentence in sentences if sentence != ""]
+        # Find first index of summaries
+        idx = 0
+        for sentence in sentences:
+            if sentence == "@highlight":
+                break
+            idx += 1
+
+        if len(sentences) < idx:
+            return [], ""
+
+        summaries = sentences[idx:]
+        sentences = sentences[:idx]
+
+        summaries = [summary for summary in summaries if summary != "@highlight"]
+        sentences = [sentence for sentence in sentences if len(sentence) > 30]
+
+        summary = ""
+        for s in summaries:
+            summary += s + ". "
+
+        sentences = [sentence.lower() for sentence in sentences]
+        return summary.lower(), sentences
+
+
+
     def rouge_to_list(self, rouge_str):
         rouge_list = [ [rouge_str[0]['rouge-1']['f'], rouge_str[0]['rouge-1']['p'], rouge_str[0]['rouge-1']['r'] ],\
                          [rouge_str[0]['rouge-2']['f'], rouge_str[0]['rouge-2']['p'], rouge_str[0]['rouge-2']['r'] ],\
                          [rouge_str[0]['rouge-l']['f'], rouge_str[0]['rouge-l']['p'], rouge_str[0]['rouge-l']['r'] ]\
                        ]
         return rouge_list
+
+
+    def euclidian_distance(self, v1, v2):
+        return np.sqrt(np.power(np.sum(v1 - v2), 2))
