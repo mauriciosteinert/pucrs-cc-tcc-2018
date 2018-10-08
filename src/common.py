@@ -62,6 +62,12 @@ class Common:
         arg_parser.add_argument('--batch-size',
                                 metavar='nn_batch_size',
                                 help='Batch size for each learning iteration.')
+
+        # Dataset preprocessing
+        arg_parser.add_argument('--dataset-chunk-size',
+                                metavar='dataset_chunk_size',
+                                help='Dataset chunk size per file')
+
         self.config = arg_parser.parse_args()
 
 
@@ -166,3 +172,49 @@ class Common:
 
     def euclidian_distance(self, v1, v2):
         return np.sqrt(np.power(np.sum(v1 - v2), 2))
+
+
+    # Save texts to NPZ files with y one-hot vector representation for summary
+    def dataset_to_npz(self):
+        # Get files list
+        files_list = self.get_dataset_files()
+        files_counter = 0
+        longest_sentence_len = 0
+        chunk_counter = 0
+        x_list = []
+        y_list = []
+
+        for file in files_list:
+            text = open(self.config.dataset_dir + "/" + file).read()
+            summary, sentences = self.text_to_sentences2(text)
+
+            curr_sentence_len = len(max(sentences, key=len))
+
+            if curr_sentence_len > longest_sentence_len:
+                longest_sentence_len = curr_sentence_len
+
+            sentences_vec = model.embed_sentences(sentences)
+
+            # Compute best rouge score for this text
+
+
+            x_list.append(sentences)
+            y_list.append(summary)
+
+            files_counter += 1
+            if files_counter % int(self.config.dataset_chunk_size) == 0:
+                # Write to file
+                np.savez(self.config.working_dir + "/" + self.config.session_name + "-" + str("%06d" % chunk_counter), \
+                            x=x_list, y=y_list)
+                x_list = []
+                y_list = []
+                chunk_counter += 1
+
+        # Save metadata
+        print("Total of files = ", files_counter)
+        print("Chunk files = ", chunk_counter)
+        print("Longest sentence in text = ", longest_sentence_len)
+
+
+    def get_next_batch(self):
+        return 0

@@ -18,12 +18,18 @@ rouge = rouge.Rouge()
 texts_list_stat = []
 texts_list_stat_rouge = []
 
+save_to_npz = True
+
 
 common.log_message("INFO", "\n\nStarting session " + str(common.config.session_name))
 common.log_message("INFO", "Parameters: " + str(common.config))
 common.log_message("INFO", "\n")
 files_counter = 0
 total_match_choice = 0
+longest_sentence_len = 0
+chunk_counter = 0
+x_list = []
+y_list = []
 
 files_list = common.get_dataset_files()
 
@@ -77,7 +83,6 @@ for file in files_list:
         sentence_idx += 1
 
 
-
     sentences_dist.sort(key=lambda x: (x[3], x[2]))
     sentence_norm_idx = sentences_dist[0][1]
     common.log_message("INFO", str(sentences_dist[0]))
@@ -91,13 +96,45 @@ for file in files_list:
     common.log_message("INFO", "BEST ROUGE SCORE = " + str(sentences_dist[0]))
     common.log_message("INFO", "\n")
 
+    files_counter += 1
+
+    if save_to_npz == True:
+        one_hot = np.zeros((len(sentences),))
+        one_hot[sentences_dist[0][1]] = 1
+
+        x_list.append(sentences_vec)
+        y_list.append(one_hot)
+
+        curr_sentence_len = len(max(sentences, key=len))
+        if curr_sentence_len > longest_sentence_len:
+            longest_sentence_len = curr_sentence_len
+
+        if files_counter % int(common.config.dataset_chunk_size) == 0:
+            # Write to file
+            np.savez(common.config.working_dir + "/" + common.config.session_name + "-" + str("%06d" % chunk_counter), \
+                x=x_list, y=y_list)
+            x_list = []
+            y_list = []
+            chunk_counter += 1
+
+
     # texts_list_stat.append(sentences_dist)
     if sentences_dist[0][4][0][0] == 0.0:
         common.log_message("INFO", "File " + file + " with rouge zero score.\nSENTENCES = " + \
                     str(sentences) + "\nSUMMARY = " + str(summary) + \
                     " CHOOSEN SUMMARY = " + str(sentences[sentences_dist[0][1]]))
 
-    files_counter += 1
+
+
+if save_to_npz == True:
+    # Save metadata
+    print("Total of files = ", files_counter)
+    print("Chunk files = ", chunk_counter)
+    print("Longest sentence in text = ", longest_sentence_len)
+    metadata = [files_counter, chunk_counter, longest_sentence_len]
+    np.savez(common.config.working_dir + "/" + common.config.session_name + "-metadata", \
+        files_counter=files_counter, chunks_counter=chunk_counter, longest_sentence=longest_sentence_len)
+
 
 #
 rouge_1_list = []
@@ -108,6 +145,8 @@ for entry in texts_list_stat:
     rouge_1_list.append(entry[4][0])
     rouge_2_list.append(entry[4][1])
     rouge_l_list.append(entry[4][2])
+
+
 
 
 # Consolidated list to compute mean
