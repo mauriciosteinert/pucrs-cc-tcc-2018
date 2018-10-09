@@ -145,7 +145,7 @@ class Common:
             idx += 1
 
         if len(sentences) < idx:
-            return [], ""
+            return "", []
 
         summaries = sentences[idx:]
         sentences = sentences[:idx]
