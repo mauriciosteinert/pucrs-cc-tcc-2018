@@ -35,21 +35,27 @@ class Common:
         arg_parser.add_argument('--session-name',
                                 metavar='session_name',
                                 help='Identifier for a specific run.')
+
         arg_parser.add_argument('--dataset-dir',
                                 metavar='dataset_dir',
                                 help='Dataset directory to use.')
+
         arg_parser.add_argument('--dataset-file-list',
                                 metavar='dataset_file_list',
                                 help='Load only files specified in informed file.')
+
         arg_parser.add_argument('--dataset-exclusion-list',
                                 metavar='dataset_exclusion_list',
                                 help='Files in dataset that must not be processed.')
+
         arg_parser.add_argument('--working-dir',
                                 metavar='working_dir',
                                 help='Working directory to save results.')
+
         arg_parser.add_argument('--word-vector-model',
                                 metavar='word_vector_model',
                                 help='Word vector model to be used to convert word and sentences.')
+
         arg_parser.add_argument('--process-n-examples',
                                 type=int,
                                 metavar='process_n_examples',
@@ -59,9 +65,14 @@ class Common:
         arg_parser.add_argument('--learning-rate',
                                 metavar='nn_learning_rate',
                                 help='Learning rate for NN training')
+
         arg_parser.add_argument('--batch-size',
-                                metavar='nn_batch_size',
+                                metavar='batch_size',
                                 help='Batch size for each learning iteration.')
+
+        arg_parser.add_argument('--percent-train',
+                                metavar='percent_train',
+                                help='Percentage of examples to be used for training stage.')
 
         # Dataset preprocessing
         arg_parser.add_argument('--dataset-chunk-size',
@@ -197,7 +208,6 @@ class Common:
 
             # Compute best rouge score for this text
 
-
             x_list.append(sentences)
             y_list.append(summary)
 
@@ -216,5 +226,67 @@ class Common:
         print("Longest sentence in text = ", longest_sentence_len)
 
 
-    def get_next_batch(self):
-        return 0
+
+    def prepare_batch(self):
+        self.dataset_files = self.get_dataset_files()
+
+        metadata_file = [file for file in self.dataset_files if "metadata" in file][0]
+        self.dataset_files = [file for file in self.dataset_files if "metadata" not in file]
+
+        # Load data from metadata file
+        m = np.load(self.config.dataset_dir + "/" + metadata_file)
+
+        total_dataset_files = m['files_counter']
+        self.total_dataset_chunks = m['chunks_counter']
+        self.longest_text = m['longest_sentence']
+
+        self.total_examples_train = np.floor(total_dataset_files * float(self.config.percent_train))
+        self.total_examples_test = total_dataset_files - self.total_examples_train
+
+        # Load first file from dataset
+        self.curr_chunk_idx = 0
+        self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
+        self.curr_chunk_idx += 1
+        self.curr_example_idx = 0
+        self.total_processed_examples = 0
+
+
+    def get_next_train_batch(self):
+        x = []
+        y = []
+        batch_capacity = int(self.config.batch_size)
+
+        while batch_capacity > 0:
+            if batch_capacity >= (self.npz['x'].shape[0] - self.curr_example_idx):
+                # Append all file chunk content to this batch
+                x.append(self.npz['x'][self.curr_example_idx:])
+                # y.append(self.npz['y'][self.curr_example_idx:])
+
+                batch_capacity -= self.npz['x'].shape[0] - self.curr_example_idx
+                self.total_processed_examples += self.npz['x'].shape[0] - self.curr_example_idx
+
+                # Load next file chunk
+                if self.curr_chunk_idx == len(self.dataset_files):
+                    # Back to first file
+                    self.curr_chunk_idx = 0
+                    self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
+                    self.curr_chunk_idx += 1
+                    self.curr_example_idx = 0
+                    self.total_processed_examples = 0
+
+                    # return what we got until now - this is a shorter mini-batch
+                    return x, y
+
+                # Load next file chunk
+                self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
+                self.curr_chunk_idx += 1
+                self.curr_example_idx = 0
+            else:
+                # Load file chunk partially until batch_capacity is filled
+                x.append(self.npz['x'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
+                # y.append(self.npz['y'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
+                self.curr_example_idx += batch_capacity
+                self.total_processed_examples += batch_capacity
+                batch_capacity = 0
+
+        return x, y
