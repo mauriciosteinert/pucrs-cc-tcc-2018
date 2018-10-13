@@ -56,6 +56,10 @@ class Common:
                                 metavar='word_vector_model',
                                 help='Word vector model to be used to convert word and sentences.')
 
+        arg_parser.add_argument('--word-vector-dim',
+                                metavar='word_vectordim',
+                                help='Word vector model dimensions.')
+
         arg_parser.add_argument('--process-n-examples',
                                 type=int,
                                 metavar='process_n_examples',
@@ -73,6 +77,10 @@ class Common:
         arg_parser.add_argument('--percent-train',
                                 metavar='percent_train',
                                 help='Percentage of examples to be used for training stage.')
+
+        arg_parser.add_argument('--num-epochs',
+                                metavar='num_epochs',
+                                help='Total of epochs to run during training stage.')
 
         # Dataset preprocessing
         arg_parser.add_argument('--dataset-chunk-size',
@@ -230,8 +238,11 @@ class Common:
     def prepare_batch(self):
         self.dataset_files = self.get_dataset_files()
 
+
         metadata_file = [file for file in self.dataset_files if "metadata" in file][0]
         self.dataset_files = [file for file in self.dataset_files if "metadata" not in file]
+
+        print(str(self.dataset_files))
 
         # Load data from metadata file
         m = np.load(self.config.dataset_dir + "/" + metadata_file)
@@ -258,25 +269,30 @@ class Common:
         x_res = []
         y_res = []
         batch_capacity = int(self.config.batch_size)
+        all_batch_run = 0
 
-        # Adjust y dimension for vector dimensionality
-        padding = np.zeros((1,3))
+        # Adjust dimension for vector dimensionality
+        padding = np.zeros((1, int(self.config.word_vector_dim)))
 
         while batch_capacity > 0:
             if batch_capacity >= (self.npz['x'].shape[0] - self.curr_example_idx):
-                if self.total_processed_examples + batch_capacity >= self.total_examples_train:
+                if self.total_processed_examples + self.npz['x'].shape[0] - self.curr_example_idx > self.total_examples_train:
+                    # print("Batch capacity exceeded 1")
                     x = np.append(x, self.npz['x'][self.curr_example_idx:self.curr_example_idx + (self.total_examples_train - self.total_processed_examples)])
 
                     # Back to first file
                     self.curr_chunk_idx = 0
+                    # print("Loading file " + self.dataset_files[self.curr_chunk_idx])
                     self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
                     self.curr_chunk_idx += 1
                     self.curr_example_idx = 0
                     self.total_processed_examples = 0
+                    all_batch_run = 1
                     break
 
                 # Append all file chunk content to this batch
                 x = np.append(x, self.npz['x'][self.curr_example_idx:])
+                y = np.append(y, self.npz['y'][self.curr_example_idx:])
 
                 batch_capacity -= self.npz['x'].shape[0] - self.curr_example_idx
                 self.total_processed_examples += self.npz['x'].shape[0] - self.curr_example_idx
@@ -289,17 +305,21 @@ class Common:
                     self.curr_chunk_idx += 1
                     self.curr_example_idx = 0
                     self.total_processed_examples = 0
+                    all_batch_run = 1
 
                     # Break and return - shorter mini-batch
                     break
 
                 # Load next file chunk
+                # print("Loading file " + self.dataset_files[self.curr_chunk_idx])
                 self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
                 self.curr_chunk_idx += 1
                 self.curr_example_idx = 0
             else:
-                if self.total_processed_examples + batch_capacity >= self.total_examples_train:
+                if self.total_processed_examples + self.npz['x'].shape[0] - self.curr_example_idx > self.total_examples_train:
+                    # print("Batch capacity exceeded 2")
                     x = np.append(x, self.npz['x'][self.curr_example_idx:self.curr_example_idx + (self.total_examples_train - self.total_processed_examples)])
+                    y = np.append(y, self.npz['y'][self.curr_example_idx:self.curr_example_idx + (self.total_examples_train - self.total_processed_examples)])
 
                     # Back to first file
                     self.curr_chunk_idx = 0
@@ -307,19 +327,63 @@ class Common:
                     self.curr_chunk_idx += 1
                     self.curr_example_idx = 0
                     self.total_processed_examples = 0
+                    all_batch_run = 1
                     break
 
                 # Load file chunk partially until batch_capacity is filled
                 x = np.append(x, self.npz['x'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
+                y = np.append(y, self.npz['y'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
 
                 self.curr_example_idx += batch_capacity
                 self.total_processed_examples += batch_capacity
                 batch_capacity = 0
 
-        for entry in x:
-            while entry.shape[0] < self.longest_text:
-                entry = np.vstack((entry, padding))
-            x_res.append(entry.reshape((1,-1)))
+        for entry_x, entry_y in zip(x, y):
+            while entry_x.shape[0] < self.longest_text:
+                entry_x = np.vstack((entry_x, padding))
+                entry_y = np.append(entry_y, 0)
+            x_res.append(entry_x.reshape((1,-1))[0])
+            y_res.append(entry_y.reshape((1,-1))[0])
 
-        print("Processed examples = ", str(self.total_processed_examples))
-        return x_res, y
+        # print("Processed examples = ", str(self.total_processed_examples))
+        return all_batch_run, np.array(x_res), np.array(y_res)
+
+
+    def get_test(self):
+        # Compute index of first test example
+        test_idx = self.total_examples_train
+        x = []
+        y = []
+        self.test_x = []
+        self.test_y = []
+
+        # Compute first data file chunk with this example
+        chunk_idx = int(test_idx / int(self.config.dataset_chunk_size))
+        chunk_example_idx = int(test_idx % int(self.config.dataset_chunk_size))
+
+        # print("Test idx = ", test_idx)
+        # print("Chunk idx = ", chunk_idx)
+        # print("Chunk example idx = ", chunk_example_idx)
+        # print("Dataset file", self.dataset_files[chunk_idx])
+
+        f = np.load(self.config.dataset_dir + "/" + self.dataset_files[chunk_idx])
+        x = np.append(x, f['x'][chunk_example_idx:])
+        y = np.append(y, f['y'][chunk_example_idx:])
+
+        for file in self.dataset_files[chunk_idx + 1:]:
+            f = np.load(self.config.dataset_dir + "/" + file)
+            x = np.append(x, f['x'])
+            y = np.append(y, f['y'])
+
+        padding = np.zeros((1, int(self.config.word_vector_dim)))
+
+        for entry_x, entry_y in zip(x, y):
+            while entry_x.shape[0] < self.longest_text:
+                entry_x = np.vstack((entry_x, padding))
+                entry_y = np.append(entry_y, 0)
+            self.test_x.append(entry_x.reshape((1,-1))[0])
+            self.test_y.append(entry_y.reshape((1,-1))[0])
+        self.test_x = np.array(self.test_x)
+        self.test_y = np.array(self.test_y)
+
+        return self.test_x, self.test_y
