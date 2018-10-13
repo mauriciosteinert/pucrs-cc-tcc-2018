@@ -237,11 +237,12 @@ class Common:
         m = np.load(self.config.dataset_dir + "/" + metadata_file)
 
         total_dataset_files = m['files_counter']
-        self.total_dataset_chunks = m['chunks_counter']
+        # self.total_dataset_chunks = m['chunks_counter']
         self.longest_text = m['longest_sentence']
+        print("Longest sentence = ", str(self.longest_text))
 
-        self.total_examples_train = np.floor(total_dataset_files * float(self.config.percent_train))
-        self.total_examples_test = total_dataset_files - self.total_examples_train
+        self.total_examples_train = int(np.floor(total_dataset_files * float(self.config.percent_train)))
+        print("Total of training examples = ", str(self.total_examples_train))
 
         # Load first file from dataset
         self.curr_chunk_idx = 0
@@ -254,13 +255,28 @@ class Common:
     def get_next_train_batch(self):
         x = []
         y = []
+        x_res = []
+        y_res = []
         batch_capacity = int(self.config.batch_size)
+
+        # Adjust y dimension for vector dimensionality
+        padding = np.zeros((1,3))
 
         while batch_capacity > 0:
             if batch_capacity >= (self.npz['x'].shape[0] - self.curr_example_idx):
+                if self.total_processed_examples + batch_capacity >= self.total_examples_train:
+                    x = np.append(x, self.npz['x'][self.curr_example_idx:self.curr_example_idx + (self.total_examples_train - self.total_processed_examples)])
+
+                    # Back to first file
+                    self.curr_chunk_idx = 0
+                    self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
+                    self.curr_chunk_idx += 1
+                    self.curr_example_idx = 0
+                    self.total_processed_examples = 0
+                    break
+
                 # Append all file chunk content to this batch
-                x.append(self.npz['x'][self.curr_example_idx:])
-                # y.append(self.npz['y'][self.curr_example_idx:])
+                x = np.append(x, self.npz['x'][self.curr_example_idx:])
 
                 batch_capacity -= self.npz['x'].shape[0] - self.curr_example_idx
                 self.total_processed_examples += self.npz['x'].shape[0] - self.curr_example_idx
@@ -274,19 +290,36 @@ class Common:
                     self.curr_example_idx = 0
                     self.total_processed_examples = 0
 
-                    # return what we got until now - this is a shorter mini-batch
-                    return x, y
+                    # Break and return - shorter mini-batch
+                    break
 
                 # Load next file chunk
                 self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
                 self.curr_chunk_idx += 1
                 self.curr_example_idx = 0
             else:
+                if self.total_processed_examples + batch_capacity >= self.total_examples_train:
+                    x = np.append(x, self.npz['x'][self.curr_example_idx:self.curr_example_idx + (self.total_examples_train - self.total_processed_examples)])
+
+                    # Back to first file
+                    self.curr_chunk_idx = 0
+                    self.npz = np.load(self.config.dataset_dir + "/" + self.dataset_files[self.curr_chunk_idx])
+                    self.curr_chunk_idx += 1
+                    self.curr_example_idx = 0
+                    self.total_processed_examples = 0
+                    break
+
                 # Load file chunk partially until batch_capacity is filled
-                x.append(self.npz['x'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
-                # y.append(self.npz['y'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
+                x = np.append(x, self.npz['x'][self.curr_example_idx:self.curr_example_idx + batch_capacity])
+
                 self.curr_example_idx += batch_capacity
                 self.total_processed_examples += batch_capacity
                 batch_capacity = 0
 
-        return x, y
+        for entry in x:
+            while entry.shape[0] < self.longest_text:
+                entry = np.vstack((entry, padding))
+            x_res.append(entry.reshape((1,-1)))
+
+        print("Processed examples = ", str(self.total_processed_examples))
+        return x_res, y
