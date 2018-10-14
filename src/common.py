@@ -276,7 +276,7 @@ class Common:
         while batch_capacity > 0:
             if batch_capacity >= chunk_capacity:
                 # Load all chunk into this batch
-                print("Adding full chunk")
+                # print("Adding full chunk")
                 if batch_type == "training":
                     if self.train_processed_examples + chunk_capacity >= self.total_training_examples:
                         x = np.append(x, self.npz_train['x'][self.train_curr_example_idx:\
@@ -351,7 +351,7 @@ class Common:
 
             else:
                 # Load partial chunk
-                print("Adding partial chunk")
+                # print("Adding partial chunk")
                 if batch_type == "training":
                     if self.train_processed_examples + chunk_capacity >= self.total_training_examples:
                         if self.total_training_examples - self.train_processed_examples >= batch_capacity:
@@ -448,7 +448,7 @@ class Common:
             x_res.append(entry_x.reshape((1, -1))[0])
             y_res.append(entry_y.reshape((1, -1))[0])
 
-        return all_batch_run, x_res, y_res
+        return all_batch_run, np.array(x_res), np.array(y_res)
 
 
 

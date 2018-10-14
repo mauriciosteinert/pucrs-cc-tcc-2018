@@ -20,25 +20,25 @@ common.log_message("INFO", "\n\nStarting session " + str(common.config.session_n
 common.log_message("INFO", "Parameters: " + str(common.config))
 common.log_message("INFO", "\n")
 
-common.get_test()
+all_batch_run_test, x_input_test, y_label_test = common.get_next_batch("test")
 
-n_hidden_1 = common.test_x.shape[0]
-n_hidden_2 = 1000
+n_hidden_1 = x_input_test.shape[0]
+n_hidden_2 = 512
 
 with tf.device(device):
-    x_ = tf.placeholder(tf.float32, shape=[None, common.test_x.shape[1]])
-    y_ = tf.placeholder(tf.float32, shape=[None, common.test_y.shape[1]])
+    x_ = tf.placeholder(tf.float32, shape=[None, x_input_test.shape[1]])
+    y_ = tf.placeholder(tf.float32, shape=[None, y_label_test.shape[1]])
 
     weights = {
-        'h1': tf.Variable(tf.random_normal([common.test_x.shape[1], n_hidden_1], seed=random_seed)),
+        'h1': tf.Variable(tf.random_normal([x_input_test.shape[1], n_hidden_1], seed=random_seed)),
         'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2], seed=random_seed)),
-        'out': tf.Variable(tf.random_normal([n_hidden_2, common.test_y.shape[1]], seed=random_seed))
+        'out': tf.Variable(tf.random_normal([n_hidden_2, y_label_test.shape[1]], seed=random_seed))
     }
 
     biases = {
         'b1': tf.Variable(np.zeros([n_hidden_1], np.float32)),
         'b2': tf.Variable(np.zeros([n_hidden_2], np.float32)),
-        'out': tf.Variable(np.zeros(common.test_y.shape[1], np.float32))
+        'out': tf.Variable(np.zeros(y_label_test.shape[1], np.float32))
     }
 
     layer_1 = tf.add(tf.matmul(x_, weights['h1']), biases['b1'])
@@ -60,25 +60,28 @@ with tf.device(device):
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         # saver.restore(sess, "./checkpoint_2.ckpt")
+        loss = 0
         acc = 0
+        loss_test = 0
+        acc_test = 0
 
         for curr_epoch in range(1, int(common.config.num_epochs) + 1):
             #  Implement mini batch passes
-            all_batch_run, x_input_batch, y_label_batch = common.get_next_train_batch()
+            all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
 
             while all_batch_run == 0:
                 sess.run(train_op,
-                    feed_dict={x_: x_input_batch,
-                    y_: y_label_batch})
-                all_batch_run, x_input_batch, y_label_batch = common.get_next_train_batch()
+                    feed_dict={x_: x_input_batch, y_: y_label_batch})
+                all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
 
             if curr_epoch % display_step == 0:
                 loss, acc = sess.run([loss_op, accuracy],
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
-                loss_test,acc_test = sess.run([loss_op, accuracy],
-                    feed_dict={x_: common.test_x, y_: common.test_y})
 
-                common.log_message("INFO", "[" + str(curr_epoch) + "] loss = "
+                loss_test,acc_test = sess.run([loss_op, accuracy],
+                    feed_dict={x_: x_input_test, y_: y_label_test})
+
+                common.log_message("INFO", "[" + str(curr_epoch) + "] loss = " \
                         + str(loss) + "\tacc = " + str(acc)
                         + "\ttest loss = " + str(loss_test)
                         + "\ttest acc = " + str(acc_test))
