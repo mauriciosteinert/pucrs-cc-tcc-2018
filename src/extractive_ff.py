@@ -4,7 +4,7 @@
 
 import sys
 
-sys.path.append("../")
+sys.path.append("../lib/python")
 from common import *
 import numpy as np
 import tensorflow as tf
