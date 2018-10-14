@@ -242,7 +242,7 @@ class Common:
         self.test_curr_chunk_idx = 0
 
         self.train_curr_example_idx = 0
-        self.test_curr_example_idx = self.total_training_examples
+        self.test_curr_example_idx = self.test_first_example_idx
 
         self.train_processed_examples = 0
         self.test_processed_examples = 0
@@ -272,7 +272,8 @@ class Common:
             batch_capacity = int(self.config.batch_test_size)
             chunk_capacity = self.npz_test['x'].shape[0] - self.test_curr_example_idx
 
-
+            print("Batch test size = ", str(batch_capacity))
+            print("Chunk capacity = ", str(chunk_capacity))
         while batch_capacity > 0:
             if batch_capacity >= chunk_capacity:
                 # Load all chunk into this batch
