@@ -13,7 +13,7 @@ common = Common()
 common.parse_cmd_args()
 common.prepare_batch()
 display_step = 1
-device = "cpu:0"
+device = "/device:GPU:0"
 random_seed = 1
 
 common.log_message("INFO", "\n\nStarting session " + str(common.config.session_name))
@@ -54,7 +54,7 @@ with tf.device(device):
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
     saver = tf.train.Saver()
-    config = tf.ConfigProto(log_device_placement=True)
+    config = tf.ConfigProto(log_device_placement=True, allow_soft_placement=True)
     config.gpu_options.allow_growth=True
 
     with tf.Session(config=config) as sess:
@@ -68,25 +68,32 @@ with tf.device(device):
         for curr_epoch in range(1, int(common.config.num_epochs) + 1):
             #  Implement mini batch passes
             all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
+            batch_count = 0
 
             while all_batch_run == 0:
+                common.log_message("INFO", "Running batch training " + str(batch_count))
                 sess.run(train_op,
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
                 all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
+                batch_count += 1
 
             if curr_epoch % display_step == 0:
                 loss, acc = sess.run([loss_op, accuracy],
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
 
-                loss_test,acc_test = sess.run([loss_op, accuracy],
-                    feed_dict={x_: x_input_test, y_: y_label_test})
+                scores_test = []
+                all_batch_test = 0
+                while all_batch_test == 0:
+                    loss_test,acc_test = sess.run([loss_op, accuracy],
+                        feed_dict={x_: x_input_test, y_: y_label_test})
+
+                    all_batch_test, x_test, y_test = common.get_next_batch("test")
+                    scores_test.append([loss_test, acc_test])
+
+                scores_test_mean = np.mean(np.array(scores_test), axis=0)
 
                 common.log_message("INFO", "[" + str(curr_epoch) + "] loss = " \
                         + str(loss) + "\tacc = " + str(acc)
-                        + "\ttest loss = " + str(loss_test)
-                        + "\ttest acc = " + str(acc_test))
-                # print("[" + str(curr_epoch) + "] loss = "
-                #         + str(loss) + "\tacc = " + str(acc)
-                #         + "\ttest loss = " + str(loss_test)
-                #         + "\ttest acc = " + str(acc_test))
-                # save_path = saver.save(sess, "./checkpoint_" + str(curr_step) + ".ckpt")
+                        + "\ttest loss = " + str(scores_test_mean[0])
+                        + "\ttest acc = " + str(scores_test_mean[1]))
+                save_path = saver.save(sess, "./checkpoint_" + str(curr_epoch) + ".ckpt")
