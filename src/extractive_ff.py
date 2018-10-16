@@ -69,17 +69,22 @@ with tf.device(device):
             #  Implement mini batch passes
             all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
             batch_count = 0
+            scores_train = []
 
             while all_batch_run == 0:
                 common.log_message("INFO", "Running batch training " + str(batch_count))
                 sess.run(train_op,
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
                 all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
+
+                loss, acc = sess.run([loss_op, accuracy],
+                    feed_dict={x_: x_input_batch, y_: y_label_batch})
+                scores_train.append([loss, acc])
+
                 batch_count += 1
 
             if curr_epoch % display_step == 0:
-                loss, acc = sess.run([loss_op, accuracy],
-                    feed_dict={x_: x_input_batch, y_: y_label_batch})
+
 
                 scores_test = []
                 all_batch_test = 0
@@ -91,9 +96,10 @@ with tf.device(device):
                     scores_test.append([loss_test, acc_test])
 
                 scores_test_mean = np.mean(np.array(scores_test), axis=0)
+                scores_train_mean = np.mean(np.array(scores_train), axis=0)
 
                 common.log_message("INFO", "[" + str(curr_epoch) + "] loss = " \
-                        + str(loss) + "\tacc = " + str(acc)
+                        + str(scores_train_mean[0]) + "\tacc = " + str(scores_test_mean[1])
                         + "\ttest loss = " + str(scores_test_mean[0])
                         + "\ttest acc = " + str(scores_test_mean[1]))
                 save_path = saver.save(sess, "./checkpoint_" + str(curr_epoch) + ".ckpt")
