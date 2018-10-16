@@ -75,12 +75,13 @@ with tf.device(device):
                 common.log_message("INFO", "Running batch training " + str(batch_count))
                 sess.run(train_op,
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
-                all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
+
 
                 loss, acc = sess.run([loss_op, accuracy],
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
                 scores_train.append([loss, acc])
-
+                all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
+                
                 batch_count += 1
 
             if curr_epoch % display_step == 0:
