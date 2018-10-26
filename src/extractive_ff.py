@@ -23,7 +23,8 @@ common.log_message("INFO", "\n")
 all_batch_run_test, x_input_test, y_label_test = common.get_next_batch("test")
 
 n_hidden_1 = x_input_test.shape[0]
-n_hidden_2 = 512
+n_hidden_2 = 10
+n_hidden_3 = 512
 
 with tf.device(device):
     x_ = tf.placeholder(tf.float32, shape=[None, x_input_test.shape[1]])
@@ -32,18 +33,21 @@ with tf.device(device):
     weights = {
         'h1': tf.Variable(tf.random_normal([x_input_test.shape[1], n_hidden_1], seed=random_seed)),
         'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2], seed=random_seed)),
-        'out': tf.Variable(tf.random_normal([n_hidden_2, y_label_test.shape[1]], seed=random_seed))
+        'h3': tf.Variable(tf.random_normal([n_hidden_2, n_hidden_3], seed=random_seed)),
+        'out': tf.Variable(tf.random_normal([x_input_test.shape[0], y_label_test.shape[1]], seed=random_seed))
     }
 
     biases = {
         'b1': tf.Variable(np.zeros([n_hidden_1], np.float32)),
         'b2': tf.Variable(np.zeros([n_hidden_2], np.float32)),
+        'b3': tf.Variable(np.zeros([n_hidden_3], np.float32)),
         'out': tf.Variable(np.zeros(y_label_test.shape[1], np.float32))
     }
 
     layer_1 = tf.add(tf.matmul(x_, weights['h1']), biases['b1'])
     layer_2 = tf.add(tf.matmul(layer_1, weights['h2']), biases['b2'])
-    out_layer = tf.add(tf.matmul(layer_2, weights['out']), biases['out'])
+    layer_3 = tf.add(tf.matmul(layer_2, weights['h3']), biases['b3'])
+    out_layer = tf.add(tf.matmul(layer_1, weights['out']), biases['out'])
 
     loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
         logits=out_layer, labels=y_))
@@ -81,7 +85,7 @@ with tf.device(device):
                     feed_dict={x_: x_input_batch, y_: y_label_batch})
                 scores_train.append([loss, acc])
                 all_batch_run, x_input_batch, y_label_batch = common.get_next_batch("training")
-                
+
                 batch_count += 1
 
             if curr_epoch % display_step == 0:
@@ -100,7 +104,7 @@ with tf.device(device):
                 scores_train_mean = np.mean(np.array(scores_train), axis=0)
 
                 common.log_message("INFO", "[" + str(curr_epoch) + "] loss = " \
-                        + str(scores_train_mean[0]) + "\tacc = " + str(scores_test_mean[1])
+                        + str(scores_train_mean[0]) + "\tacc = " + str(scores_train_mean[1])
                         + "\ttest loss = " + str(scores_test_mean[0])
                         + "\ttest acc = " + str(scores_test_mean[1]))
                 save_path = saver.save(sess, "./checkpoint_" + str(curr_epoch) + ".ckpt")
