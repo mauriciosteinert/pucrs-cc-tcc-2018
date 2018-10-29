@@ -42,17 +42,12 @@ model.summary()
 model.fit(x_train, y_train_p, epochs=int(common.config.num_epochs))
 
 all_batch_run_test, x_test, y_test = common.get_next_batch("test")
-predictions = model.predict(x_test)
 
-hit = 0
+y_test_p = []
 
-print(x_test.shape, y_test.shape)
+for y_t in y_test:
+    y_test_p = np.append(y_test_p, np.argmax(y_t))
 
-for i in range(0, y_test.shape[0]):
-    y = np.argmax(y_test[i])
-    y_hat = np.argmax(predictions[i])
 
-    if y == y_hat:
-        hit += 1
-
-print("test precision = ", hit / y_test.shape[0])
+scores = model.evaluate(x_test, y_test_p, verbose=0)
+print("Test Accuracy:", scores)
