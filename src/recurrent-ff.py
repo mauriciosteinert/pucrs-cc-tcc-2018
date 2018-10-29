@@ -22,8 +22,8 @@ print("Y test shape", Y_test.shape)
 
 
 model = keras.Sequential([
-    keras.layers.Embedding(X_train.shape[1], 1),
-    keras.layers.LSTM(1),
+    keras.layers.Embedding(200, 128, input_length=100),
+    keras.layers.LSTM(units=1),
     keras.layers.Dense(1, activation=tf.nn.sigmoid)
 ])
 

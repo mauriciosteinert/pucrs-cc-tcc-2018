@@ -31,6 +31,7 @@ for file in files_list:
         continue
 
     sentences_vec = common.model.embed_sentences(sentences)
+    Y_rouge_list = []
 
     # Compute ROUGE score for each sentence
     for sentence, sentence_vec in zip(sentences, sentences_vec):
@@ -41,8 +42,11 @@ for file in files_list:
                                 sentence)
             continue
 
-        Y_list.append(common.rouge_to_list(rouge_str)[0][2])
-        X_list.append(sentence_vec)
+        Y_rouge_list.append(common.rouge_to_list(rouge_str)[0][2])
+        
+    Y_list.append(Y_rouge_list)
+    Y_rouge_list = []
+    X_list.append(sentences_vec)
 
     np.savez(common.config.working_dir + "/" + common.config.session_name,
             x=np.array(X_list), y=np.array(Y_list))
