@@ -35,22 +35,25 @@ y_list = []
 files_list = common.get_dataset_files()
 
 for file in files_list:
-    if files_counter % 100 == 0:
-        print("\n\n[" + str("%.03f" % (files_counter /len(files_list))) + "] Processing file " + file)
+    print("\n\n[" + str("%.03f" % (files_counter /len(files_list))) + "] Processing file " + file)
 
     text = open(common.config.dataset_dir + "/" + file).read()
 
     # Get ground-truth summary and sentences
     summary, sentences = common.text_to_sentences2(text)
 
-    # Ignore texts with number of sentences less than 8
-    if len(sentences) < 10:
-        common.log_message("ERROR", "Ignoring file " + file + " due to parse errors or short length.")
+    # Ignore texts with too few or too many sentences
+    if len(sentences) < 10 or len(sentences) > 45:
+        common.log_message("ERROR", "Ignoring file " + file + " due to parse errors or length.")
         continue
 
     # Convert summary and text to embeddings
-    summary_vec = common.model.embed_sentence(summary)
-    sentences_vec = common.model.embed_sentences(sentences)
+    try:
+        summary_vec = common.model.embed_sentence(summary)
+        sentences_vec = common.model.embed_sentences(sentences)
+    except TypeError:
+        common.log_message("ERROR", "Ignoring file " + file + " due to embedding error.")
+        continue
 
     sentences_dist = []
     sentence_idx = 0

@@ -11,15 +11,11 @@ common.parse_cmd_args()
 
 np.random.seed(1)
 
-dataset = np.load("../datasets/npz_rouge/preprocess2.npz")
-
+dataset_train = np.load("../npz-rouge-100/preprocess-rouge-100-000000.npz")
+dataset_test = np.load("../npz-rouge-100/preprocess-rouge-100-000001.npz")
 
 # Get longest text
-longest_text = 0
-
-for entry in dataset['x']:
-    if len(entry) > longest_text:
-        longest_text = len(entry)
+longest_text = 45
 
 # Apply padding
 padding = np.zeros(100,)
@@ -27,36 +23,49 @@ padding = np.zeros(100,)
 X_res = []
 Y_res = []
 
-for entry_x, entry_y in zip(dataset['x'], dataset['y']):
+for entry_x, entry_y in zip(dataset_train['x'], dataset_train['y_rouge']):
     while len(entry_x) < longest_text:
         entry_x = np.vstack((entry_x, padding))
         entry_y = np.append(entry_y, 0)
     X_res.append(entry_x)
     Y_res.append(entry_y)
 
-X_train = np.array(X_res[:90])
-X_test = np.array(X_res[90:])
-Y_train = np.array(Y_res[:90])
-Y_test = np.array(Y_res[90:])
+X_train = np.array(X_res)
+Y_train = np.array(Y_res)
 
-Y_train = Y_train.reshape(Y_train.shape[0], longest_text, 1)
-Y_test = Y_test.reshape(Y_test.shape[0], longest_text, 1)
+print(X_train.shape, Y_train.shape)
+
+X_res = []
+Y_res = []
+
+for entry_x, entry_y in zip(dataset_test['x'], dataset_test['y_rouge']):
+    while len(entry_x) < longest_text:
+        entry_x = np.vstack((entry_x, padding))
+        entry_y = np.append(entry_y, 0)
+    X_res.append(entry_x)
+    Y_res.append(entry_y)
+
+X_test = np.array(X_res)
+Y_test = np.array(Y_res)
+
+print(X_test.shape, Y_test.shape)
 
 
 model = keras.Sequential([
-    keras.layers.LSTM(units=10,
+            keras.layers.LSTM(units=32,
             input_shape=(X_train.shape[1], X_train.shape[2]),
             activation=tf.nn.relu,
-            return_sequences=True),
-    keras.layers.Dense(1, activation='softmax')
+            return_sequences=False),
+    keras.layers.Dense(longest_text)
 ])
 
+
 model.compile(  loss='mean_squared_error',
-                optimizer='adam',
-                metrics=['accuracy'])
+                optimizer='adam', metrics=['accuracy'])
 
 
 print(model.summary())
 model.fit(X_train, Y_train,
-            epochs=5,
+            epochs=100,
+            batch_size=200,
             validation_data=(X_test, Y_test))
