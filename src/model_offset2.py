@@ -18,6 +18,11 @@ rouge = rouge.Rouge()
 texts_list_stat = []
 texts_list_stat_rouge = []
 
+n_top = 10
+sentences_top_counter = np.zeros(n_top,)
+
+
+
 common.log_message("INFO", "\n\nStarting session " + str(common.config.session_name))
 common.log_message("INFO", "Parameters: " + str(common.config))
 common.log_message("INFO", "\n")
@@ -69,12 +74,6 @@ for file in files_list:
             sentence_idx += 1
             continue
 
-        # print("Processing sentence [" + str(sentence_idx) \
-        #                     + "] "+ sentences[sentence_idx]  \
-        #                     + " -- euclidian distance = " + str(sentence_vec_dist) \
-        #                     + " -- ROUGE scores = " + str(rouge_str))
-        # print("---------------------------------")
-
         sentences_dist.append([file, sentence_idx, len(sentences[sentence_idx]), sentence_vec_dist, \
                                 common.rouge_to_list(rouge_str)])
         sentence_idx += 1
@@ -86,8 +85,12 @@ for file in files_list:
     texts_list_stat.append(sentences_dist[0])
     sentences_dist.sort(key=lambda x: x[4][0], reverse=True)
 
-    if sentence_norm_idx == sentences_dist[0][1]:
-        total_match_choice += 1
+    # if sentence_norm_idx == sentences_dist[0][1]:
+    #     total_match_choice += 1
+
+    for i in range(0, n_top):
+        if sentence_norm_idx == sentences_dist[i][1]:
+            sentences_top_counter[i] += 1
 
     texts_list_stat_rouge.append(sentences_dist[0])
     common.log_message("INFO", "BEST ROUGE SCORE = " + str(sentences_dist[0]))
@@ -110,7 +113,6 @@ for entry in texts_list_stat:
     rouge_1_list.append(entry[4][0])
     rouge_2_list.append(entry[4][1])
     rouge_l_list.append(entry[4][2])
-
 
 
 
@@ -150,3 +152,5 @@ common.log_message("INFO", "STD DEVIATION")
 common.log_message("INFO", "\tROUGE-1: " + str(np.std(rouge_1_list, axis=0)))
 common.log_message("INFO", "\tROUGE-2: " + str(np.std(rouge_2_list, axis=0)))
 common.log_message("INFO", "\tROUGE-L: "+ str(np.std(rouge_l_list, axis=0)))
+
+common.log_message("INFO", "TOP sentences selection: " + str(sentences_top_counter))
