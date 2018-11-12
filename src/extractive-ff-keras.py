@@ -30,8 +30,8 @@ common.log_message("INFO", "\n")
 # file_train = np.load("../npz-classification-10000/preprocess-data-10000-000000.npz")
 # file_test = np.load("../npz-classification-10000/preprocess-data-10000-000001.npz")
 
-file_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
-file_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
+file_train = np.load("../datasets/npz2/preprocess-data2-20000-000000.npz")
+file_test = np.load("../datasets/npz2/preprocess-data2-20000-000001.npz")
 
 x_train_1 = file_train['x']
 y_train_1 = file_train['y_idx']
@@ -77,7 +77,7 @@ x_test = np.array(x_test)
 y_test = np.array(y_test)
 
 
-network = 8
+network = 7
 
 if network == 1:
     model = keras.Sequential([
@@ -119,7 +119,6 @@ elif network == 5:
         keras.layers.Dense(4, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
-        keras.layers.Dropout(0.1),
         keras.layers.Dense(4, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
@@ -128,14 +127,16 @@ elif network == 5:
 elif network == 6:
     model = keras.Sequential([
         keras.layers.Flatten(input_shape=(x_train.shape[1],)),
-        keras.layers.Dense(4, activation=tf.nn.relu,
+        keras.layers.Dense(2, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
-        keras.layers.Dropout(0.1),
-        keras.layers.Dense(4, activation=tf.nn.relu,
+        keras.layers.Dense(2, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
-        keras.layers.Dense(4, activation=tf.nn.relu,
+        keras.layers.Dense(2, activation=tf.nn.relu,
+                    kernel_initializer='random_uniform',
+                    bias_initializer='zeros'),
+        keras.layers.Dense(2, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
         keras.layers.Dense(max_sentences, activation=tf.nn.softmax)
@@ -149,9 +150,6 @@ elif network == 7:
         keras.layers.MaxPooling1D(pool_size=3),
 
         keras.layers.Flatten(),
-        keras.layers.Dense(8, activation=tf.nn.relu,
-                    kernel_initializer='random_uniform',
-                    bias_initializer='zeros'),
         keras.layers.Dense(8, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
