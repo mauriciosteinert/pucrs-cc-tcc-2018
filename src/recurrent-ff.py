@@ -9,6 +9,9 @@ from tensorflow import keras
 import numpy as np
 from common import *
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 common = Common()
 common.parse_cmd_args()
 
@@ -17,15 +20,15 @@ np.random.seed(1)
 # dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
 # dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
 
-dataset_train = np.load("../datasets/npz2/preprocess-data2-d600-100-000000.npz")
-dataset_test = np.load("../datasets/npz2/preprocess-data2-d600-100-000001.npz")
+dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
+dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
 
 
 # Get longest text
 longest_text = 45
 
 # Apply padding
-padding = np.zeros(600,)
+padding = np.zeros(int(common.config.word_vector_dim),)
 
 X_res = []
 Y_res = []
@@ -101,6 +104,7 @@ model = keras.Sequential([
             return_sequences=True),
             input_shape=(X_train.shape[1], X_train.shape[2])),
     keras.layers.Dense(3)
+    # keras.layers.TimeDistributed(keras.layers.Dense(3))
 ])
 
 model.compile(  loss='mean_squared_error',
@@ -108,7 +112,7 @@ model.compile(  loss='mean_squared_error',
 
 print(model.summary())
 model.fit(X_train, Y_train,
-            epochs=1000,
+            epochs=int(common.config.num_epochs),
             batch_size=100,
             validation_data=(X_test, Y_test))
 
@@ -119,7 +123,6 @@ y_new = model.predict(X_test)
 rouge_1_list = []
 rouge_2_list = []
 rouge_l_list = []
-
 
 for y_hat, y in zip(y_new, dataset_test['y_rouge']):
     try:
@@ -137,9 +140,6 @@ for y_hat, y in zip(y_new, dataset_test['y_rouge']):
     except IndexError:
         rouge_l_list.append(0)
 
-
-    # rouge_2_list.append(y[np.argmax(y_hat)][1][0])
-    # rouge_l_list.append(y[np.argmax(y_hat)][2][0])
 
 print("ROUGE-1 MEAN: ", np.mean(np.array(rouge_1_list)))
 print("ROUGE-2 MEAN: ", np.mean(np.array(rouge_2_list)))
