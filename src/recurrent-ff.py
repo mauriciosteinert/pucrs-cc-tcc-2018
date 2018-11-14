@@ -20,8 +20,8 @@ np.random.seed(1)
 # dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
 # dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
 
-dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
-dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
+dataset_train = np.load("../datasets/npz2/preprocess-data2-1000-000000.npz")
+dataset_test = np.load("../datasets/npz2/preprocess-data2-1000-000001.npz")
 
 
 # Get longest text
@@ -67,7 +67,6 @@ Y_train = Y_train.reshape(Y_train.shape[0], longest_text, 3)
 print(X_train.shape, Y_train.shape)
 
 
-
 X_res = []
 Y_res = []
 
@@ -100,7 +99,7 @@ Y_test = Y_test.reshape(Y_test.shape[0], longest_text, 3)
 
 model = keras.Sequential([
             keras.layers.Bidirectional(keras.layers.LSTM(units=8,
-            activation=tf.nn.sigmoid,
+            activation=tf.nn.relu,
             return_sequences=True),
             input_shape=(X_train.shape[1], X_train.shape[2])),
     keras.layers.Dense(3)
@@ -114,32 +113,45 @@ print(model.summary())
 model.fit(X_train, Y_train,
             epochs=int(common.config.num_epochs),
             batch_size=100,
+            verbose=2,
             validation_data=(X_test, Y_test))
 
 
 # Prediction and ROUGE scores for
 y_new = model.predict(X_test)
 
+
 rouge_1_list = []
 rouge_2_list = []
 rouge_l_list = []
 
-for y_hat, y in zip(y_new, dataset_test['y_rouge']):
+best_rouge_1_list = []
+best_rouge_2_list = []
+best_rouge_l_list = []
+
+
+for y_hat, y, file in zip(y_new, dataset_test['y_rouge'], dataset_test['files']):
+    y_best_rouge_idx = np.argmax(y, axis=0)[0][0]
+    y_hat_best_rouge_idx = np.argmax(y_hat, axis=0)[0]
+
     try:
-        rouge_1_list.append(y[np.argmax(y_hat)][0][0])
+        rouge_1_list.append(y[y_hat_best_rouge_idx][0][0])
     except IndexError:
         rouge_1_list.append(0)
 
     try:
-        rouge_2_list.append(y[np.argmax(y_hat)][1][0])
+        rouge_2_list.append(y[y_hat_best_rouge_idx][1][0])
     except IndexError:
         rouge_2_list.append(0)
 
     try:
-        rouge_l_list.append(y[np.argmax(y_hat)][2][0])
+        rouge_l_list.append(y[y_hat_best_rouge_idx][2][0])
     except IndexError:
         rouge_l_list.append(0)
 
+    best_rouge_1_list.append(y[y_best_rouge_idx][0][0])
+    best_rouge_2_list.append(y[y_best_rouge_idx][1][0])
+    best_rouge_l_list.append(y[y_best_rouge_idx][2][0])
 
 print("ROUGE-1 MEAN: ", np.mean(np.array(rouge_1_list)))
 print("ROUGE-2 MEAN: ", np.mean(np.array(rouge_2_list)))
@@ -148,3 +160,13 @@ print("ROUGE-L MEAN: ", np.mean(np.array(rouge_l_list)))
 print("ROUGE-1 STDDEV: ", np.std(np.array(rouge_1_list)))
 print("ROUGE-2 STDDEV: ", np.std(np.array(rouge_2_list)))
 print("ROUGE-L STDDEV: ", np.std(np.array(rouge_l_list)))
+
+
+print("BEST ROUGE SCORES:")
+print("ROUGE-1 MEAN: ", np.mean(np.array(best_rouge_1_list)))
+print("ROUGE-2 MEAN: ", np.mean(np.array(best_rouge_2_list)))
+print("ROUGE-L MEAN: ", np.mean(np.array(best_rouge_l_list)))
+
+print("ROUGE-1 STDDEV: ", np.std(np.array(best_rouge_1_list)))
+print("ROUGE-2 STDDEV: ", np.std(np.array(best_rouge_2_list)))
+print("ROUGE-L STDDEV: ", np.std(np.array(best_rouge_l_list)))
