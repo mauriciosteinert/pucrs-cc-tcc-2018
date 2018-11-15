@@ -20,8 +20,8 @@ np.random.seed(1)
 # dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
 # dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
 
-dataset_train = np.load("../datasets/npz2/preprocess-data2-1000-000000.npz")
-dataset_test = np.load("../datasets/npz2/preprocess-data2-1000-000001.npz")
+dataset_train = np.load("../datasets/npz2/preprocess-data2-20000-000000.npz")
+dataset_test = np.load("../datasets/npz2/preprocess-data2-20000-000001.npz")
 
 
 # Get longest text
@@ -117,6 +117,12 @@ model.fit(X_train, Y_train,
             validation_data=(X_test, Y_test))
 
 
+model_json = model.to_json()
+with open(common.config.working_dir + "/" + common.config.session_name + ".json", "w") as f:
+    f.write(model_json)
+
+model.save_weights(common.config.working_dir + "/" + common.config.session_name + ".h5")
+
 # Prediction and ROUGE scores for
 y_new = model.predict(X_test)
 
@@ -129,6 +135,8 @@ best_rouge_1_list = []
 best_rouge_2_list = []
 best_rouge_l_list = []
 
+
+out_of_range_predictions = 0
 
 for y_hat, y, file in zip(y_new, dataset_test['y_rouge'], dataset_test['files']):
     y_best_rouge_idx = np.argmax(y, axis=0)[0][0]
@@ -153,6 +161,9 @@ for y_hat, y, file in zip(y_new, dataset_test['y_rouge'], dataset_test['files'])
     best_rouge_2_list.append(y[y_best_rouge_idx][1][0])
     best_rouge_l_list.append(y[y_best_rouge_idx][2][0])
 
+    if(y_hat_best_rouge_idx > len(y)):
+        out_of_range_predictions += 1
+
 print("ROUGE-1 MEAN: ", np.mean(np.array(rouge_1_list)))
 print("ROUGE-2 MEAN: ", np.mean(np.array(rouge_2_list)))
 print("ROUGE-L MEAN: ", np.mean(np.array(rouge_l_list)))
@@ -170,3 +181,4 @@ print("ROUGE-L MEAN: ", np.mean(np.array(best_rouge_l_list)))
 print("ROUGE-1 STDDEV: ", np.std(np.array(best_rouge_1_list)))
 print("ROUGE-2 STDDEV: ", np.std(np.array(best_rouge_2_list)))
 print("ROUGE-L STDDEV: ", np.std(np.array(best_rouge_l_list)))
+print("Out of range predictions: ", out_of_range_predictions)
