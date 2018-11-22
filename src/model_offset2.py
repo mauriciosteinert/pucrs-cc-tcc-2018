@@ -78,7 +78,6 @@ for file in files_list:
                                 common.rouge_to_list(rouge_str)])
         sentence_idx += 1
 
-
     sentences_dist.sort(key=lambda x: (x[3], x[2]))
     sentence_norm_idx = sentences_dist[0][1]
     common.log_message("INFO", str(sentences_dist[0]))
@@ -88,9 +87,13 @@ for file in files_list:
     # if sentence_norm_idx == sentences_dist[0][1]:
     #     total_match_choice += 1
 
-    for i in range(0, n_top):
-        if sentence_norm_idx == sentences_dist[i][1]:
-            sentences_top_counter[i] += 1
+    try:
+        for i in range(0, n_top):
+            if sentence_norm_idx == sentences_dist[i][1]:
+                sentences_top_counter[i] += 1
+    except IndexError:
+        common.log_message("ERROR", str(file) + "  -- Error computing top sentences.")
+
 
     texts_list_stat_rouge.append(sentences_dist[0])
     common.log_message("INFO", "BEST ROUGE SCORE = " + str(sentences_dist[0]))

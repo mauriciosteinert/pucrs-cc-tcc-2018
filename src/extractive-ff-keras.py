@@ -77,7 +77,7 @@ x_test = np.array(x_test)
 y_test = np.array(y_test)
 
 
-network = 7
+network = 8
 
 if network == 1:
     model = keras.Sequential([
@@ -163,57 +163,22 @@ elif network == 8:
     x_test = x_test.reshape(y_train.shape[0], 45, 100)
 
     model = keras.Sequential([
-        keras.layers.Conv1D(filters=2, kernel_size=3,
+        keras.layers.Conv1D(filters=16, kernel_size=3,
                             activation='relu',
                             input_shape=(x_train.shape[1], x_train.shape[2]),
                             use_bias=True),
-        keras.layers.MaxPooling1D(pool_size=1),
-        keras.layers.Conv1D(filters=2, kernel_size=3,
-                            activation='relu',
-                            use_bias=True),
-
-        keras.layers.MaxPooling1D(pool_size=1),
+        keras.layers.MaxPooling1D(pool_size=5),
 
         keras.layers.Flatten(),
-        keras.layers.Dense(4, activation=tf.nn.relu,
+        keras.layers.Dense(24, activation=tf.nn.relu,
                     kernel_initializer='random_uniform',
                     bias_initializer='zeros'),
 
         keras.layers.Dense(max_sentences, activation=tf.nn.softmax)
     ])
 
-
-
-
 print(x_train.shape, y_train.shape)
 print(x_test.shape, y_test.shape)
-
-
-# For convolutional network, uncomment this block
-# x_train = x_train.reshape(x_train.shape[0], 45, 100)
-# x_test = x_test.reshape(y_train.shape[0], 45, 100)
-#
-#
-# model = keras.Sequential([
-#     keras.layers.Conv1D(filters=16, kernel_size=3, activation='relu', input_shape=(x_train.shape[1], x_train.shape[2])),
-#     keras.layers.MaxPooling1D(pool_size=3),
-#
-#     keras.layers.Flatten(),
-#     keras.layers.Dense(4, activation=tf.nn.relu,
-#                 kernel_initializer='random_uniform',
-#                 bias_initializer='zeros'),
-#
-#     keras.layers.Dense(4, activation=tf.nn.relu,
-#                 kernel_initializer='random_uniform',
-#                 bias_initializer='zeros'),
-#
-#     keras.layers.Dense(4, activation=tf.nn.relu,
-#                 kernel_initializer='random_uniform',
-#                 bias_initializer='zeros'),
-#     keras.layers.Dense(max_sentences, activation=tf.nn.softmax)
-# ])
-
-
 
 model.compile(  loss='sparse_categorical_crossentropy',
                 optimizer='adam',
@@ -242,6 +207,7 @@ model.fit(x_train, y_train_p,
 
 # Prediction and ROUGE scores for
 y_new = model.predict_classes(x_test)
+out_of_range_predictions = 0
 
 rouge_1_list = []
 rouge_2_list = []
@@ -253,6 +219,7 @@ for file_name, y_t, y_p, y_rouge in zip(file_test['files'], y_test_1, y_new, y_t
     try:
         log_test.append([file_name, y_t, y_rouge[y_t], y_p, y_rouge[y_p]])
     except IndexError:
+        out_of_range_predictions += 1
         log_test.append([file_name, y_t, 0, y_p, 0])
 
 with open(common.config.working_dir + "/" + common.config.session_name + "-results", 'w') as f:
@@ -276,3 +243,4 @@ print("ROUGE-L MEAN: ", np.mean(np.array(rouge_l_list)))
 print("ROUGE-1 STDDEV: ", np.std(np.array(rouge_1_list)))
 print("ROUGE-2 STDDEV: ", np.std(np.array(rouge_2_list)))
 print("ROUGE-L STDDEV: ", np.std(np.array(rouge_l_list)))
+print("Out of range predictions: ", out_of_range_predictions)
