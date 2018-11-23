@@ -10,12 +10,17 @@ import rouge
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+# Import common class
 common = Common()
 common.parse_cmd_args()
+
+# Load word vector dictionary
 common.load_word_vec_model()
 
+# Load rouge library
 rouge = rouge.Rouge()
+
+# Statistical lists
 texts_list_stat = []
 texts_list_stat_rouge = []
 
@@ -45,7 +50,7 @@ for file in files_list:
     # Get ground-truth summary and sentences
     summary, sentences = common.text_to_sentences2(text)
 
-    # Ignore texts with number of sentences less than 8
+    # Ignore texts with number of sentences shorter than 8
     if len(sentences) < 10:
         common.log_message("ERROR", "Ignoring file " + file + " due to parse errors or short length.")
         continue
@@ -54,6 +59,8 @@ for file in files_list:
     summary_vec = common.model.embed_sentence(summary)
     sentences_vec = common.model.embed_sentences(sentences)
     text_mean_vec = np.mean(sentences_vec, axis=0)
+
+    # Extract ground-truth vector from summary
     text_mean_diff_vec = np.subtract(text_mean_vec, summary_vec)
 
     sentences_dist = []
@@ -66,19 +73,28 @@ for file in files_list:
         try:
             rouge_str = rouge.get_scores(summary, sentences[sentence_idx])
         except ValueError:
+            # Ignore sentences witch is not possible to compute ROUGE scores
             common.log_message("ERROR", str(file) + "  -- Error computing ROUGE of sentence " +\
                                 sentences[sentence_idx])
             sentence_idx += 1
             continue
 
+        # Add sentences and statistis for further classification
         sentences_dist.append([file, sentence_idx, len(sentences[sentence_idx]), sentence_vec_dist, \
                                 common.rouge_to_list(rouge_str)])
         sentence_idx += 1
 
+    # Sort sentences list based on closest vector distance and shortest sentence
     sentences_dist.sort(key=lambda x: (x[3], x[2]))
+
+    # Catch index of sentence that is closer to text mean vector
     sentence_norm_idx = sentences_dist[0][1]
     common.log_message("INFO", str(sentences_dist[0]))
+
+    # Append example statistic for further predicted ROUGE scores computation
     texts_list_stat.append(sentences_dist[0])
+
+    # Sort sentences in text by best ROUGE scores
     sentences_dist.sort(key=lambda x: x[4][0], reverse=True)
 
     try:
@@ -86,9 +102,11 @@ for file in files_list:
             if sentence_norm_idx == sentences_dist[i][1]:
                 sentences_top_counter[i] += 1
     except IndexError:
+        # Discard sentences out of n_top range
         common.log_message("ERROR", str(file) + "  -- Error computing top sentences.")
 
 
+    # Append example statistic for further best ROUGE scores computation
     texts_list_stat_rouge.append(sentences_dist[0])
     common.log_message("INFO", "BEST ROUGE SCORE = " + str(sentences_dist[0]))
     common.log_message("INFO", "\n")
@@ -99,6 +117,7 @@ for file in files_list:
         common.log_message("INFO", "File " + file + " with rouge zero score.\nSENTENCES = " + \
                     str(sentences) + "\nSUMMARY = " + str(summary) + \
                     " CHOOSEN SUMMARY = " + str(sentences[sentences_dist[0][1]]))
+
 
     # Generate T-SNE representation of text
     sentences_vec_tsne = np.vstack((sentences_vec, text_mean_vec))
@@ -118,12 +137,13 @@ for file in files_list:
             plt.xlim((-1, 1))
             plt.ylim((-1, 1))
 
-        # plt.text(U[i,0], U[i,1], str(i), fontsize=6)
+    # plt.text(U[i,0], U[i,1], str(i), fontsize=6)
     plt.plot(U[sentence_norm_idx,0], U[sentence_norm_idx, 1], 'r^')
     plt.savefig("tsne/" + file + '.pdf')
     plt.clf()
 
-#
+
+# Compute ROUGE scores for predicted summaries
 rouge_1_list = []
 rouge_2_list = []
 rouge_l_list = []
@@ -150,8 +170,7 @@ common.log_message("INFO", "\tROUGE-2: " + str(np.std(rouge_2_list, axis=0)))
 common.log_message("INFO", "\tROUGE-L: "+ str(np.std(rouge_l_list, axis=0)))
 
 
-
-#
+# Compute ROUGE scores for best summaries
 rouge_1_list = []
 rouge_2_list = []
 rouge_l_list = []
