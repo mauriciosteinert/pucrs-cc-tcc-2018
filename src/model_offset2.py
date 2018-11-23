@@ -8,6 +8,7 @@ sys.path.append("../")
 from common import *
 import rouge
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 common = Common()
@@ -43,10 +44,6 @@ for file in files_list:
 
     # Get ground-truth summary and sentences
     summary, sentences = common.text_to_sentences2(text)
-
-    # print("SUMMARY ", summary)
-    # print("SENTENCES ", sentences)
-    # print()
 
     # Ignore texts with number of sentences less than 8
     if len(sentences) < 10:
@@ -84,9 +81,6 @@ for file in files_list:
     texts_list_stat.append(sentences_dist[0])
     sentences_dist.sort(key=lambda x: x[4][0], reverse=True)
 
-    # if sentence_norm_idx == sentences_dist[0][1]:
-    #     total_match_choice += 1
-
     try:
         for i in range(0, n_top):
             if sentence_norm_idx == sentences_dist[i][1]:
@@ -101,11 +95,33 @@ for file in files_list:
 
     files_counter += 1
 
-    # texts_list_stat.append(sentences_dist)
     if sentences_dist[0][4][0][0] == 0.0:
         common.log_message("INFO", "File " + file + " with rouge zero score.\nSENTENCES = " + \
                     str(sentences) + "\nSUMMARY = " + str(summary) + \
                     " CHOOSEN SUMMARY = " + str(sentences[sentences_dist[0][1]]))
+
+    # Generate T-SNE representation of text
+    sentences_vec_tsne = np.vstack((sentences_vec, text_mean_vec))
+    U, s, Vh = np.linalg.svd(sentences_vec_tsne, full_matrices=False)
+
+    for i in range(len(sentences_vec)):
+        fig = plt.gcf()
+        fig.set_size_inches(5, 5)
+
+        if i == len(sentences_vec) - 1:
+            plt.plot(U[i,0], U[i,1], 'bs')
+        elif i == sentence_norm_idx:
+            continue
+        else:
+            # Plot remaining sentences
+            plt.plot(U[i,0], U[i,1], 'go')
+            plt.xlim((-1, 1))
+            plt.ylim((-1, 1))
+
+        # plt.text(U[i,0], U[i,1], str(i), fontsize=6)
+    plt.plot(U[sentence_norm_idx,0], U[sentence_norm_idx, 1], 'r^')
+    plt.savefig("tsne/" + file + '.pdf')
+    plt.clf()
 
 #
 rouge_1_list = []
@@ -116,7 +132,6 @@ for entry in texts_list_stat:
     rouge_1_list.append(entry[4][0])
     rouge_2_list.append(entry[4][1])
     rouge_l_list.append(entry[4][2])
-
 
 
 # Consolidated list to compute mean
