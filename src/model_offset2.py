@@ -104,23 +104,31 @@ for file in files_list:
     sentences_vec_tsne = np.vstack((sentences_vec, text_mean_vec))
     U, s, Vh = np.linalg.svd(sentences_vec_tsne, full_matrices=False)
 
+    first_sentence = True
+
     for i in range(len(sentences_vec)):
         fig = plt.gcf()
         fig.set_size_inches(5, 5)
 
         if i == len(sentences_vec) - 1:
-            plt.plot(U[i,0], U[i,1], 'bs')
+            plt.plot(U[i,0], U[i,1], 'bs', label='text mean')
         elif i == sentence_norm_idx:
             continue
         else:
             # Plot remaining sentences
-            plt.plot(U[i,0], U[i,1], 'go')
+            if first_sentence == True:
+                plt.plot(U[i,0], U[i,1], 'go', label='sentence')
+                first_sentence = False
+            else:
+                plt.plot(U[i,0], U[i,1], 'go')
             plt.xlim((-1, 1))
             plt.ylim((-1, 1))
 
         # plt.text(U[i,0], U[i,1], str(i), fontsize=6)
-    plt.plot(U[sentence_norm_idx,0], U[sentence_norm_idx, 1], 'r^')
-    plt.savefig("tsne/" + file + '.pdf')
+    plt.plot(U[sentence_norm_idx,0], U[sentence_norm_idx, 1], 'r^',
+            label='choosen sentence')
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5,-0.05), ncol=3)
+    plt.savefig("tsne/" + file + '.png', format='png')
     plt.clf()
 
 #
