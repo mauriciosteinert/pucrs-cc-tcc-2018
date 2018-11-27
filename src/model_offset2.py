@@ -26,7 +26,7 @@ texts_list_stat_rouge = []
 
 n_top = 10
 sentences_top_counter = np.zeros(n_top,)
-
+generate_tsne = False
 
 
 common.log_message("INFO", "\n\nStarting session " + str(common.config.session_name))
@@ -89,13 +89,14 @@ for file in files_list:
 
     # Catch index of sentence that is closer to text mean vector
     sentence_norm_idx = sentences_dist[0][1]
-    common.log_message("INFO", str(sentences_dist[0]))
+    result_predict = sentences_dist[0]
 
     # Append example statistic for further predicted ROUGE scores computation
     texts_list_stat.append(sentences_dist[0])
 
     # Sort sentences in text by best ROUGE scores
     sentences_dist.sort(key=lambda x: x[4][0], reverse=True)
+    sentence_best_idx = sentences_dist[0][1]
 
     try:
         for i in range(0, n_top):
@@ -108,7 +109,12 @@ for file in files_list:
 
     # Append example statistic for further best ROUGE scores computation
     texts_list_stat_rouge.append(sentences_dist[0])
-    common.log_message("INFO", "BEST ROUGE SCORE = " + str(sentences_dist[0]))
+
+    # common.log_message("INFO", str(result_predict) + " -- " + str(sentences_dist[0]))
+    common.log_message("INFO", file + " -- Choosen sentence [" + str(sentence_norm_idx) + "] = " + \
+        sentences[sentence_norm_idx] + " Scores = " + str(result_predict[4]) + \
+        " -- Best Sentence [" + str(sentence_best_idx) + "] = " + sentences[sentence_best_idx] + \
+        " Scores = " + str(sentences_dist[0][4]))
     common.log_message("INFO", "\n")
 
     files_counter += 1
@@ -119,35 +125,38 @@ for file in files_list:
                     " CHOOSEN SUMMARY = " + str(sentences[sentences_dist[0][1]]))
 
 
-    # Generate T-SNE representation of text
-    sentences_vec_tsne = np.vstack((sentences_vec, text_mean_vec))
-    U, s, Vh = np.linalg.svd(sentences_vec_tsne, full_matrices=False)
+    if generate_tsne == True:
+        # Generate T-SNE representation of text
+        sentences_vec_tsne = np.vstack((sentences_vec, text_mean_vec))
+        U, s, Vh = np.linalg.svd(sentences_vec_tsne, full_matrices=False)
 
-    first_sentence = True
+        first_sentence = True
+        for i in range(len(sentences_vec)):
+            fig = plt.gcf()
+            fig.set_size_inches(5, 5)
 
-    for i in range(len(sentences_vec)):
-        fig = plt.gcf()
-        fig.set_size_inches(5, 5)
-
-        if i == len(sentences_vec) - 1:
-            plt.plot(U[i,0], U[i,1], 'bs', label='text mean')
-        elif i == sentence_norm_idx:
-            continue
-        else:
-            # Plot remaining sentences
-            if first_sentence == True:
-                plt.plot(U[i,0], U[i,1], 'go', label='sentence')
-                first_sentence = False
+            if i == len(sentences_vec) - 1:
+                plt.plot(U[i,0], U[i,1], 'bs', label='text mean',
+                        markersize=18)
+            elif i == sentence_norm_idx:
+                continue
             else:
-                plt.plot(U[i,0], U[i,1], 'go')
-            plt.xlim((-1, 1))
-            plt.ylim((-1, 1))
+                # Plot remaining sentences
+                if first_sentence == True:
+                    plt.plot(U[i,0], U[i,1], 'go', label='sentence',
+                            markersize=18)
+                    first_sentence = False
+                else:
+                    plt.plot(U[i,0], U[i,1], 'go',
+                            markersize=18)
+                plt.xlim((-0.5, 0.5))
+                plt.ylim((-0.5, 0.5))
 
-    plt.plot(U[sentence_norm_idx,0], U[sentence_norm_idx, 1], 'r^',
-            label='choosen sentence')
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5,-0.05), ncol=3)
-    plt.savefig("tsne/" + file + '.png', format='png')
-    plt.clf()
+        plt.plot(U[sentence_norm_idx,0], U[sentence_norm_idx, 1], 'r^',
+                label='choosen sentence', markersize=18)
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5,-0.05), ncol=3)
+        plt.savefig("tsne/" + file + '.png', format='png')
+        plt.clf()
 
 
 # Compute ROUGE scores for predicted summaries
