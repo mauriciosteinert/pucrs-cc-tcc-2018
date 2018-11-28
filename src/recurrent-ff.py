@@ -17,11 +17,11 @@ common.parse_cmd_args()
 
 np.random.seed(1)
 
-# dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
-# dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
+dataset_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
+dataset_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
 
-dataset_train = np.load("../datasets/npz2/preprocess-data2-20000-000000.npz")
-dataset_test = np.load("../datasets/npz2/preprocess-data2-20000-000001.npz")
+# dataset_train = np.load("../datasets/npz2/preprocess-data2-20000-000000.npz")
+# dataset_test = np.load("../datasets/npz2/preprocess-data2-20000-000001.npz")
 
 
 # Get longest text
@@ -137,10 +137,22 @@ best_rouge_l_list = []
 
 
 out_of_range_predictions = 0
+log_test = []
 
 for y_hat, y, file in zip(y_new, dataset_test['y_rouge'], dataset_test['files']):
+    text = open(common.config.dataset_dir + "/" + file).read()
+    summary, sentences = common.text_to_sentences2(text)
+
     y_best_rouge_idx = np.argmax(y, axis=0)[0][0]
     y_hat_best_rouge_idx = np.argmax(y_hat, axis=0)[0]
+
+    try:
+        log_test.append([file, y_best_rouge_idx, y[y_best_rouge_idx],
+                y_hat_best_rouge_idx, y[y_best_rouge_idx],
+                sentences[y_best_rouge_idx], sentences[y_hat_best_rouge_idx]])
+    except IndexError:
+        out_of_range_predictions += 1
+        log_test.append([file, y_t, 0, y_p, 0, "out of range", "out of range"])
 
     try:
         rouge_1_list.append(y[y_hat_best_rouge_idx][0][0])
@@ -163,6 +175,12 @@ for y_hat, y, file in zip(y_new, dataset_test['y_rouge'], dataset_test['files'])
 
     if(y_hat_best_rouge_idx > len(y)):
         out_of_range_predictions += 1
+
+
+with open(common.config.working_dir + "/" + common.config.session_name + "-results", 'w') as f:
+    for entry in log_test:
+        f.write("%s\n\n" % entry)
+
 
 print("ROUGE-1 MEAN: ", np.mean(np.array(rouge_1_list)))
 print("ROUGE-2 MEAN: ", np.mean(np.array(rouge_2_list)))
