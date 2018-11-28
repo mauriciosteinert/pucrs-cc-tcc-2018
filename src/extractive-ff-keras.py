@@ -30,8 +30,12 @@ common.log_message("INFO", "\n")
 # file_train = np.load("../npz-classification-10000/preprocess-data-10000-000000.npz")
 # file_test = np.load("../npz-classification-10000/preprocess-data-10000-000001.npz")
 
-file_train = np.load("../datasets/npz2/preprocess-data2-20000-000000.npz")
-file_test = np.load("../datasets/npz2/preprocess-data2-20000-000001.npz")
+# file_train = np.load("../datasets/npz2/preprocess-data2-20000-000000.npz")
+# file_test = np.load("../datasets/npz2/preprocess-data2-20000-000001.npz")
+
+file_train = np.load("../datasets/npz2/preprocess-data2-100-000000.npz")
+file_test = np.load("../datasets/npz2/preprocess-data2-100-000001.npz")
+
 
 x_train_1 = file_train['x']
 y_train_1 = file_train['y_idx']
@@ -216,15 +220,19 @@ rouge_l_list = []
 log_test = []
 
 for file_name, y_t, y_p, y_rouge in zip(file_test['files'], y_test_1, y_new, y_test_rouge):
+
+    text = open(common.config.dataset_dir + "/" + file_name).read()
+    summary, sentences = common.text_to_sentences2(text)
+
     try:
-        log_test.append([file_name, y_t, y_rouge[y_t], y_p, y_rouge[y_p]])
+        log_test.append([file_name, y_t, y_rouge[y_t], y_p, y_rouge[y_p], sentences[y_t], sentences[y_p]])
     except IndexError:
         out_of_range_predictions += 1
-        log_test.append([file_name, y_t, 0, y_p, 0])
+        log_test.append([file_name, y_t, 0, y_p, 0, "out of range", "out of range"])
 
 with open(common.config.working_dir + "/" + common.config.session_name + "-results", 'w') as f:
     for entry in log_test:
-        f.write("%s\n" % entry)
+        f.write("%s\n\n" % entry)
 
 for y_rouge, y_t, y_p in zip(y_test_rouge, y_test_p, y_new):
     try:
